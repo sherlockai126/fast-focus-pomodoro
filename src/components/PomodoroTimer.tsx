@@ -29,7 +29,7 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
   const [sessionType, setSessionType] = useState<'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK'>('POMODORO')
   const [completedPomodoros, setCompletedPomodoros] = useState(0)
   
-  const intervalRef = useRef<NodeJS.Timeout>()
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number>(0)
 
   const getDurationForType = (type: 'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK') => {
