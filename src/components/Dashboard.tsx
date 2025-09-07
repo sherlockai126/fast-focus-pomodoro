@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { Plus, Play, Pause, Square, Settings, BarChart3, User, Timer, Clock } from 'lucide-react'
+import { Plus, Settings, BarChart3, Clock } from 'lucide-react'
 import QuickAddTask from './QuickAddTask'
 import TaskList from './TaskList'
 import PomodoroTimer from './PomodoroTimer'
+import Image from 'next/image'
 
 interface Task {
   id: string
@@ -134,11 +135,15 @@ export default function Dashboard() {
                   onClick={() => signOut()}
                   className="flex items-center space-x-2 p-2 text-gray-600 hover:text-gray-900"
                 >
-                  <img
-                    src={session?.user?.image || ''}
-                    alt="User avatar"
-                    className="w-6 h-6 rounded-full"
-                  />
+                  {session?.user?.image && (
+                    <Image
+                      src={session.user.image}
+                      alt="User avatar"
+                      width={24}
+                      height={24}
+                      className="rounded-full"
+                    />
+                  )}
                   <span className="text-sm font-medium">{session?.user?.name}</span>
                 </button>
               </div>
@@ -198,7 +203,6 @@ export default function Dashboard() {
               <TaskList 
                 tasks={displayTasks}
                 onTaskUpdated={onTaskUpdated}
-                currentSession={currentSession}
               />
             </div>
           </div>

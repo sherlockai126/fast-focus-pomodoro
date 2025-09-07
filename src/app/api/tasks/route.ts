@@ -4,6 +4,14 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Priority } from '@prisma/client'
 
+interface WhereClause {
+  userId: string
+  OR?: Array<Record<string, unknown>>
+  status?: string
+  title?: Record<string, unknown>
+  notes?: Record<string, unknown>
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,7 +23,7 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get('filter') // all, today, completed
     const search = searchParams.get('search')
     
-    let whereClause: any = {
+    const whereClause: WhereClause = {
       userId: session.user.id
     }
 

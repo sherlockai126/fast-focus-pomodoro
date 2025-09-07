@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Play, Pause, Square, RotateCcw } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Play, Pause, Square } from 'lucide-react'
 
 interface Task {
   id: string
@@ -32,98 +32,7 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
   const intervalRef = useRef<NodeJS.Timeout>()
   const startTimeRef = useRef<number>(0)
 
-  // Timer effect
-  useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleTimerComplete()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [isRunning, timeLeft])
-
-  const getDurationForType = (type: 'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK') => {
-    switch (type) {
-      case 'POMODORO': return 25 * 60
-      case 'SHORT_BREAK': return 5 * 60
-      case 'LONG_BREAK': return 15 * 60
-      default: return 25 * 60
-    }
-  }
-
-  const startTimer = async () => {
-    try {
-      const response = await fetch('/api/pomodoro/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskId: selectedTaskId || null,
-          type: sessionType
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setCurrentSession(data.session)
-        setIsRunning(true)
-        startTimeRef.current = Date.now()
-        onSessionChange(data.session)
-        
-        // Request notification permission
-        if ('Notification' in window && Notification.permission === 'default') {
-          Notification.requestPermission()
-        }
-      } else if (response.status === 409) {
-        // Session already running
-        const data = await response.json()
-        alert('A session is already running. Complete or cancel it first.')
-      }
-    } catch (error) {
-      console.error('Error starting timer:', error)
-    }
-  }
-
-  const pauseTimer = () => {
-    setIsRunning(false)
-  }
-
-  const cancelTimer = async () => {
-    if (!currentSession) return
-
-    try {
-      const actualSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000)
-      
-      await fetch('/api/pomodoro/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: currentSession.id,
-          actualSeconds
-        })
-      })
-
-      resetTimer()
-    } catch (error) {
-      console.error('Error canceling timer:', error)
-    }
-  }
-
-  const handleTimerComplete = async () => {
+  const handleTimerComplete = useCallback(async () => {
     if (!currentSession) return
 
     try {
@@ -168,6 +77,96 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
       onTaskUpdated()
     } catch (error) {
       console.error('Error completing timer:', error)
+    }
+  }, [currentSession, sessionType, selectedTaskId, tasks, completedPomodoros, onTaskUpdated])
+
+  // Timer effect
+  useEffect(() => {
+    if (isRunning && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            handleTimerComplete()
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [isRunning, timeLeft, handleTimerComplete])
+
+  const getDurationForType = (type: 'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK') => {
+    switch (type) {
+      case 'POMODORO': return 25 * 60
+      case 'SHORT_BREAK': return 5 * 60
+      case 'LONG_BREAK': return 15 * 60
+      default: return 25 * 60
+    }
+  }
+
+  const startTimer = async () => {
+    try {
+      const response = await fetch('/api/pomodoro/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: selectedTaskId || null,
+          type: sessionType
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCurrentSession(data.session)
+        setIsRunning(true)
+        startTimeRef.current = Date.now()
+        onSessionChange(data.session)
+        
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission()
+        }
+      } else if (response.status === 409) {
+        // Session already running
+        alert('A session is already running. Complete or cancel it first.')
+      }
+    } catch (error) {
+      console.error('Error starting timer:', error)
+    }
+  }
+
+  const pauseTimer = () => {
+    setIsRunning(false)
+  }
+
+  const cancelTimer = async () => {
+    if (!currentSession) return
+
+    try {
+      const actualSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000)
+      
+      await fetch('/api/pomodoro/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: currentSession.id,
+          actualSeconds
+        })
+      })
+
+      resetTimer()
+    } catch (error) {
+      console.error('Error canceling timer:', error)
     }
   }
 
