@@ -32,6 +32,22 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
   const intervalRef = useRef<NodeJS.Timeout>()
   const startTimeRef = useRef<number>(0)
 
+  const getDurationForType = (type: 'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK') => {
+    switch (type) {
+      case 'POMODORO': return 25 * 60
+      case 'SHORT_BREAK': return 5 * 60
+      case 'LONG_BREAK': return 15 * 60
+      default: return 25 * 60
+    }
+  }
+
+  const resetTimer = () => {
+    setCurrentSession(null)
+    setIsRunning(false)
+    startTimeRef.current = 0
+    onSessionChange(null)
+  }
+
   const handleTimerComplete = useCallback(async () => {
     if (!currentSession) return
 
@@ -105,15 +121,6 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
     }
   }, [isRunning, timeLeft, handleTimerComplete])
 
-  const getDurationForType = (type: 'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK') => {
-    switch (type) {
-      case 'POMODORO': return 25 * 60
-      case 'SHORT_BREAK': return 5 * 60
-      case 'LONG_BREAK': return 15 * 60
-      default: return 25 * 60
-    }
-  }
-
   const startTimer = async () => {
     try {
       const response = await fetch('/api/pomodoro/start', {
@@ -168,13 +175,6 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
     } catch (error) {
       console.error('Error canceling timer:', error)
     }
-  }
-
-  const resetTimer = () => {
-    setCurrentSession(null)
-    setIsRunning(false)
-    startTimeRef.current = 0
-    onSessionChange(null)
   }
 
   const formatTime = (seconds: number) => {

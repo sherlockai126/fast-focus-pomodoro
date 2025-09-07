@@ -4,81 +4,110 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 interface RouteParams {
-  params: Promise<{
+  params: {
     id: string
-  }>
+  }
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams
+) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const resolvedParams = await params
-    const body = await request.json()
-    const { title, notes, priority, tags, estimate, status, dueAt } = body
-
-    // Verify task ownership
-    const existingTask = await prisma.task.findFirst({
+    const task = await prisma.task.findFirst({
       where: {
-        id: resolvedParams.id,
+        id: params.id,
         userId: session.user.id
       }
     })
 
-    if (!existingTask) {
+    if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
 
-    const updateData: Record<string, unknown> = {}
-    if (title !== undefined) updateData.title = title
-    if (notes !== undefined) updateData.notes = notes
-    if (priority !== undefined) updateData.priority = priority
-    if (tags !== undefined) updateData.tags = JSON.stringify(tags)
-    if (estimate !== undefined) updateData.estimate = estimate
-    if (status !== undefined) updateData.status = status
-    if (dueAt !== undefined) updateData.dueAt = dueAt ? new Date(dueAt) : null
+    return NextResponse.json({ task })
+  } catch (error) {
+    console.error('Error fetching task:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
-    const task = await prisma.task.update({
-      where: { id: resolvedParams.id },
+export async function PUT(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const updateData: Record<string, unknown> = {}
+    
+    if (body.title !== undefined) updateData.title = body.title
+    if (body.notes !== undefined) updateData.notes = body.notes
+    if (body.status !== undefined) updateData.status = body.status
+    if (body.priority !== undefined) updateData.priority = body.priority
+    if (body.pomodoroEstimate !== undefined) updateData.pomodoroEstimate = body.pomodoroEstimate
+    if (body.tags !== undefined) updateData.tags = body.tags
+    if (body.dueDate !== undefined) {
+      updateData.dueDate = body.dueDate ? new Date(body.dueDate) : null
+    }
+    if (body.completedAt !== undefined) {
+      updateData.completedAt = body.completedAt ? new Date(body.completedAt) : null
+    }
+
+    const task = await prisma.task.updateMany({
+      where: {
+        id: params.id,
+        userId: session.user.id
+      },
       data: updateData
     })
 
-    return NextResponse.json({ task })
+    if (task.count === 0) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+    }
+
+    const updatedTask = await prisma.task.findUnique({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ task: updatedTask })
   } catch (error) {
     console.error('Error updating task:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteParams
+) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const resolvedParams = await params
-
-    // Verify task ownership
-    const existingTask = await prisma.task.findFirst({
+    const task = await prisma.task.deleteMany({
       where: {
-        id: resolvedParams.id,
+        id: params.id,
         userId: session.user.id
       }
     })
 
-    if (!existingTask) {
+    if (task.count === 0) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
 
-    await prisma.task.delete({
-      where: { id: resolvedParams.id }
-    })
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ message: 'Task deleted successfully' })
   } catch (error) {
     console.error('Error deleting task:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
