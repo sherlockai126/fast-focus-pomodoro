@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma, Priority } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,13 +62,13 @@ export async function POST(request: NextRequest) {
     const tags = tagMatches.map((tag: string) => tag.slice(1))
     
     const priorityMatch = taskText.match(/!(high|medium|low)/i)
-    let priority = 'MEDIUM'
+    let priority: Priority = 'MEDIUM'
     if (priorityMatch) {
-      priority = priorityMatch[1].toUpperCase()
+      priority = priorityMatch[1].toUpperCase() as Priority
     }
     
     const estimateMatch = taskText.match(/~(\d+)/)
-    const pomodoroEstimate = estimateMatch ? parseInt(estimateMatch[1]) : 1
+    const estimate = estimateMatch ? parseInt(estimateMatch[1]) : 1
     
     // Clean title by removing syntax
     const title = taskText
@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         title,
         priority,
-        pomodoroEstimate,
-        tags,
+        estimate,
+        tags: JSON.stringify(tags),
         status: 'TODO'
       }
     })
