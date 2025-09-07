@@ -1,213 +1,94 @@
-# Fast Focus - Pomodoro Task Manager
+# Fast Focus Pomodoro
 
-> Plan fast. Focus deep.
+A lightning-fast personal task manager with Pomodoro technique integration.
 
-A lightning-fast personal task manager with Pomodoro technique integration. Built with Next.js, TypeScript, and modern web technologies.
+## Features
 
-## ✨ Features
+- **Quick Task Entry**: Add tasks with smart syntax including tags (#), priorities (!), and time estimates (~)
+- **Pomodoro Timer**: Distraction-free focus sessions with automatic break scheduling
+- **Calendar Integration**: Sync completed sessions via webhooks (n8n/Zapier compatible)
+- **Google Authentication**: Secure login with Google OAuth
+- **Real-time Notifications**: Desktop notifications for session completions
 
-- **🚀 Quick Task Creation**: Add tasks with smart syntax (`#tags`, `!priority`, `~estimates`)
-- **🍅 Pomodoro Timer**: Distraction-free focus sessions with accurate timers
-- **🔗 Webhook Integration**: Auto-sync to your n8n workflows and calendar
-- **⌨️ Keyboard Shortcuts**: Lightning-fast navigation (Q for quick add)
-- **📊 Analytics**: Track productivity and focus patterns
-- **🔄 Offline Support**: Queued webhook delivery with retry logic
-- **🔐 Secure**: Google OAuth + HMAC webhook signatures
+## Tech Stack
 
-## 🏗️ Architecture
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Database**: PostgreSQL via Supabase
+- **Authentication**: NextAuth.js with Google provider
+- **Styling**: Tailwind CSS
+- **ORM**: Prisma
+- **Icons**: Lucide React
 
-- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, NextAuth.js, Prisma ORM
-- **Database**: SQLite (dev) / PostgreSQL (prod)
-- **Auth**: Google OAuth via NextAuth.js
-- **Webhooks**: Idempotent delivery with exponential backoff
-
-## 🚀 Quick Start
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 18 or later
+- A Supabase account and project
 - Google OAuth credentials
-- Optional: n8n instance for webhook integration
+- Vercel account for deployment
 
-### 1. Installation
+### Environment Variables
 
-```bash
-cd fast-focus-pomodoro
-npm install
-```
+Create a `.env.local` file with:
 
-### 2. Environment Setup
-
-Copy `.env.example` to `.env.local` and configure:
-
-```bash
-# Database (SQLite for development)
-DATABASE_URL="file:./dev.db"
+```env
+# Database
+DATABASE_URL="your-supabase-connection-string"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_SECRET="your-nextauth-secret"
 
-# Google OAuth (get from Google Cloud Console)
+# Google OAuth
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
-
-# App
-APP_VERSION="1.0.0"
 ```
 
-### 3. Database Setup
+### Installation
 
 ```bash
-# Generate Prisma client
-npm run db:generate
-
-# Run migrations
-npm run db:migrate
-
-# Seed demo data (optional)
-npm run db:seed
-```
-
-### 4. Google OAuth Setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials
-5. Add authorized redirect URIs:
-   - `http://localhost:3000/api/auth/callback/google` (dev)
-   - `https://yourdomain.com/api/auth/callback/google` (prod)
-
-### 5. Run Development Server
-
-```bash
+npm install
+npx prisma migrate deploy
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and sign in with Google.
+## Deployment
 
-## 📝 Usage
+This project is optimized for deployment on Vercel with automatic TypeScript and ESLint validation.
 
-### Quick Task Creation
+## API Reference
 
-Use smart syntax in the task input:
+### Tasks API
+- `GET /api/tasks` - List user tasks with optional filtering
+- `POST /api/tasks` - Create new task
+- `PUT /api/tasks/[id]` - Update existing task
+- `DELETE /api/tasks/[id]` - Delete task
 
-```
-Write spec #deepwork !high ~2
-```
+### Pomodoro API
+- `POST /api/pomodoro/start` - Start new session
+- `POST /api/pomodoro/complete` - Complete current session
+- `POST /api/pomodoro/cancel` - Cancel current session
 
-- `#deepwork` → adds "deepwork" tag
-- `!high` → sets HIGH priority  
-- `~2` → estimates 2 pomodoros
+### Settings API
+- `GET /api/settings` - Get user preferences
+- `PUT /api/settings` - Update user preferences
 
-### Keyboard Shortcuts
+## Database Schema
 
-- `Q` - Open quick add
-- `Enter` - Create task
-- `Cmd/Ctrl+Enter` - Create task and start pomodoro
-- `Space` - Start/pause timer (when focused)
-- `Esc` - Cancel current action
+The application uses the following main models:
+- **User**: Authentication and profile data
+- **Task**: User tasks with status, priority, and estimates
+- **PomodoroSession**: Timer sessions linked to tasks
+- **Settings**: User preferences and webhook configuration
+- **WebhookDelivery**: Webhook delivery tracking with retry logic
 
-### Pomodoro Sessions
+## Webhook Integration
 
-1. Select a task (optional)
-2. Click "Start Focus Time"
-3. Work for 25 minutes
-4. Take automatic break (5min short, 15min long every 4 sessions)
-5. Webhooks fire automatically to your n8n instance
+Configure webhook URLs in settings to automatically sync completed Pomodoro sessions to external calendar systems. Supports HMAC signature verification for security.
 
-## 🔗 Webhook Integration
+Built with ❤️ for productivity enthusiasts.
 
-### Setup n8n Integration
-
-1. Create n8n workflow with webhook trigger
-2. Add webhook URL in Settings
-3. Generate webhook secret for security
-4. Test connection
-
-### Webhook Events
-
-All webhooks include HMAC signature for security:
-
-```typescript
-// Event types
-'pomodoro.started' | 'pomodoro.completed' | 'pomodoro.canceled' 
-| 'break.started' | 'break.completed' | 'task.completed'
-
-// Example payload
-{
-  "event": "pomodoro.completed",
-  "user_id": "user_123",
-  "session_id": "session_456",
-  "task": { "id": "task_789", "title": "Write spec" },
-  "start_at": "2025-09-07T10:00:00Z",
-  "end_at": "2025-09-07T10:25:00Z",
-  "duration_planned_sec": 1500,
-  "duration_actual_sec": 1492,
-  "timezone": "America/New_York",
-  "app_version": "1.0.0"
-}
-```
-
-## 🗃️ Database Schema
-
-### Core Models
-
-- **User**: OAuth profile + timezone
-- **Settings**: Pomodoro lengths, webhook config  
-- **Task**: Title, priority, tags, estimates, status
-- **PomodoroSession**: Timer sessions with start/end times
-- **WebhookDelivery**: Reliable delivery tracking
-
-## 📊 API Reference
-
-### Tasks
-```
-GET    /api/tasks?filter=today|all|completed&search=query
-POST   /api/tasks
-PATCH  /api/tasks/:id
-DELETE /api/tasks/:id
-```
-
-### Pomodoro
-```
-POST /api/pomodoro/start    # Start session
-POST /api/pomodoro/complete # Complete session  
-POST /api/pomodoro/cancel   # Cancel session
-```
-
-### Settings & Webhooks
-```
-GET   /api/settings
-PATCH /api/settings
-POST  /api/settings/webhook/test
-```
-
-## 🛠️ Development
-
-### Project Structure
-
-```
-src/
-├── app/                 # Next.js App Router
-├── components/          # React components
-├── lib/                 # Utilities (auth, prisma, webhook)
-└── types/               # TypeScript definitions
-
-prisma/
-├── schema.prisma        # Database schema
-└── seed.ts             # Demo data
-```
-
-### Database Commands
-
-```bash
-npm run db:studio       # Open Prisma Studio
-npm run db:reset        # Reset database
-npm run db:migrate      # Create migration
-npm run db:seed         # Seed demo data
-```
-
-Built with ❤️ for productivity enthusiasts and deep work advocates.
+---
+*Deployment Status: Environment variables configured ✅*
