@@ -1,14 +1,14 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import LandingPage from '@/components/LandingPage'
+import Dashboard from '@/components/Dashboard'
 
-export default async function HomePage() {
+export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   
-  if (session) {
-    redirect('/dashboard')
+  if (!session) {
+    redirect('/auth/signin')
   }
 
-  return <LandingPage />
+  return <Dashboard />
 }
