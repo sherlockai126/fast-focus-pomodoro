@@ -41,12 +41,12 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
     }
   }
 
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     setCurrentSession(null)
     setIsRunning(false)
     startTimeRef.current = 0
     onSessionChange(null)
-  }
+  }, [onSessionChange])
 
   const handleTimerComplete = useCallback(async () => {
     if (!currentSession) return
@@ -94,7 +94,7 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
     } catch (error) {
       console.error('Error completing timer:', error)
     }
-  }, [currentSession, sessionType, selectedTaskId, tasks, completedPomodoros, onTaskUpdated])
+  }, [currentSession, sessionType, selectedTaskId, tasks, completedPomodoros, onTaskUpdated, resetTimer])
 
   // Timer effect
   useEffect(() => {
