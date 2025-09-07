@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-
-interface WhereClause {
-  userId: string
-  OR?: Array<Record<string, unknown>>
-  status?: string
-  title?: Record<string, unknown>
-  notes?: Record<string, unknown>
-}
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,10 +15,10 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const search = searchParams.get('search')
     
-    const whereClause: WhereClause = { userId: session.user.id }
+    const whereClause: Prisma.TaskWhereInput = { userId: session.user.id }
     
     if (status && status !== 'ALL') {
-      whereClause.status = status
+      whereClause.status = status as Prisma.EnumTaskStatusFilter
     }
     
     if (search) {
@@ -58,21 +51,43 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, notes, priority, pomodoroEstimate, tags, dueDate } = body
+    const { taskText } = body
+
+    if (!taskText) {
+      return NextResponse.json({ error: 'Task text is required' }, { status: 400 })
+    }
+
+    // Parse task text for tags, priority, and estimate
+    const tagMatches = taskText.match(/#(\w+)/g) || []
+    const tags = tagMatches.map((tag: string) => tag.slice(1))
+    
+    const priorityMatch = taskText.match(/!(high|medium|low)/i)
+    let priority = 'MEDIUM'
+    if (priorityMatch) {
+      priority = priorityMatch[1].toUpperCase()
+    }
+    
+    const estimateMatch = taskText.match(/~(\d+)/)
+    const pomodoroEstimate = estimateMatch ? parseInt(estimateMatch[1]) : 1
+    
+    // Clean title by removing syntax
+    const title = taskText
+      .replace(/#\w+/g, '')
+      .replace(/!(high|medium|low)/gi, '')
+      .replace(/~\d+/g, '')
+      .trim()
 
     if (!title) {
-      return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Task title cannot be empty' }, { status: 400 })
     }
 
     const task = await prisma.task.create({
       data: {
         userId: session.user.id,
         title,
-        notes: notes || null,
-        priority: priority || 'MEDIUM',
-        pomodoroEstimate: pomodoroEstimate || 1,
-        tags: tags || [],
-        dueDate: dueDate ? new Date(dueDate) : null,
+        priority,
+        pomodoroEstimate,
+        tags,
         status: 'TODO'
       }
     })
