@@ -1,37 +1,99 @@
-# 🍅 Fast Focus - Pomodoro Task Manager
+# Fast Focus Pomodoro
 
-A lightning-fast personal task manager built with the Pomodoro Technique for maximum productivity.
+A lightning-fast personal task manager with Pomodoro technique. Start focusing immediately without sign-in, and optionally sync your sessions with Google Calendar.
 
-## ✨ Features
+## 🚀 Key Features
 
-- **Smart Task Creation**: Use syntax shortcuts like `#tags`, `!priority`, and `~estimates`
-- **Accurate Pomodoro Timer**: 25-minute focus sessions with automatic break management
-- **Google OAuth Authentication**: Secure login with your Google account
-- **Webhook Integration**: Automate workflows with n8n integration
-- **Real-time Analytics**: Track your productivity and session history
-- **Responsive Design**: Works perfectly on desktop and mobile
+### Instant Start - No Sign-in Required
+- **Start Immediately**: Open the app and start your Pomodoro timer instantly
+- **Local Storage**: All sessions are saved in your browser's local storage
+- **Anonymous Usage**: Use all core features without creating an account
 
-## 🚀 Tech Stack
+### Optional Sign-in Benefits
+- **Google Sign-in**: Sign in with Google to unlock additional features
+- **Session Sync**: Automatically migrate your anonymous sessions to your account
+- **Google Calendar Integration**: Sync completed sessions with your calendar
+- **Cross-Device Access**: Access your sessions from any device
+
+## 💡 How It Works
+
+1. **Visit the app** - Start using the Pomodoro timer immediately
+2. **Track Sessions** - Your focus sessions are saved locally in your browser
+3. **Sign in (Optional)** - Click "Sign in with Google" when you want to:
+   - Save your session history permanently
+   - Sync with Google Calendar
+   - Access from multiple devices
+
+## 🛠 Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
-- **Backend**: Prisma ORM, PostgreSQL/SQLite
 - **Authentication**: NextAuth.js with Google OAuth
-- **Deployment**: Vercel with automatic CI/CD
+- **Database**: Prisma with PostgreSQL
+- **Deployment**: Vercel
 
-## 🔧 Quick Start
+## 📦 Installation
 
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Set up environment variables
-4. Run development server: `npm run dev`
-5. Visit `http://localhost:3000`
+```bash
+# Clone the repository
+git clone https://github.com/sherlockai126/fast-focus-pomodoro.git
 
-## 🌟 Live Demo
+# Install dependencies
+npm install
 
-Visit the live application: [https://fast-focus-pomodoro.vercel.app](https://fast-focus-pomodoro.vercel.app)
+# Set up environment variables
+cp .env.example .env.local
 
----
+# Run database migrations
+npm run db:migrate
 
-Built with ❤️ for productive focus sessions
+# Start development server
+npm run dev
+```
 
-**Last updated**: 2025-09-07
+## 🔧 Environment Variables
+
+Create a `.env.local` file with:
+
+```env
+DATABASE_URL="your-database-url"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+NEXTAUTH_SECRET="your-nextauth-secret"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+## 🎯 Usage
+
+### Anonymous User Flow
+1. Open the app - Pomodoro timer is ready to use
+2. Enter task name (optional)
+3. Start timer
+4. Sessions are saved locally
+
+### Authenticated User Flow
+1. Click "Sign in with Google"
+2. Your anonymous sessions are migrated
+3. Access full dashboard with:
+   - Task management
+   - Statistics
+   - Calendar sync
+   - Settings
+
+## 📊 Features Comparison
+
+| Feature | Anonymous | Signed In |
+|---------|-----------|-----------|
+| Pomodoro Timer | ✅ | ✅ |
+| Session Tracking | ✅ (Local) | ✅ (Cloud) |
+| Task Management | Basic | Full |
+| Statistics | Today Only | All Time |
+| Calendar Sync | ❌ | ✅ |
+| Cross-Device | ❌ | ✅ |
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+MIT License - feel free to use this project for personal or commercial purposes.
