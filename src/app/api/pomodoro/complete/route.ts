@@ -47,10 +47,29 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Get user for timezone
+    // Get user for timezone and settings
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id }
+      where: { id: session.user.id },
+      include: {
+        settings: true
+      }
     })
+
+    // Get duration based on session type and user settings
+    let durationPlannedSec = 1500 // default 25 minutes
+    if (user?.settings) {
+      switch (pomodoroSession.type) {
+        case 'POMODORO':
+          durationPlannedSec = (user.settings.pomodoroLen || 25) * 60
+          break
+        case 'SHORT_BREAK':
+          durationPlannedSec = (user.settings.shortBreak || 5) * 60
+          break
+        case 'LONG_BREAK':
+          durationPlannedSec = (user.settings.longBreak || 15) * 60
+          break
+      }
+    }
 
     // Dispatch webhook for session completion
     const payload = {
@@ -61,9 +80,10 @@ export async function POST(request: NextRequest) {
         id: updatedSession.task.id,
         title: updatedSession.task.title
       } : undefined,
-      started_at: updatedSession.startedAt.toISOString(),
-      completed_at: updatedSession.completedAt?.toISOString(),
-      actual_seconds: updatedSession.actualSeconds,
+      start_at: updatedSession.startedAt.toISOString(),
+      end_at: updatedSession.completedAt?.toISOString(),
+      duration_planned_sec: durationPlannedSec,
+      duration_actual_sec: updatedSession.actualSeconds,
       timezone: user?.timezone || 'UTC',
       app_version: process.env.APP_VERSION || '1.0.0'
     }
