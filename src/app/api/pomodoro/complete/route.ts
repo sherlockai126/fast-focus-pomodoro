@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       start_at: updatedSession.startedAt.toISOString(),
       end_at: updatedSession.completedAt?.toISOString(),
       duration_planned_sec: durationPlannedSec,
-      duration_actual_sec: updatedSession.actualSeconds,
+      duration_actual_sec: updatedSession.actualSeconds ?? undefined,
       timezone: user?.timezone || 'UTC',
       app_version: process.env.APP_VERSION || '1.0.0'
     }
