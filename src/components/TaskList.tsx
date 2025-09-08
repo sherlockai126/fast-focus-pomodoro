@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Clock, AlertTriangle, MoreVertical, Trash2, Edit3 } from 'lucide-react'
+import { CheckCircle, Circle, Clock, Flag, Hash, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import clsx from 'clsx'
 
 interface Task {
   id: string
@@ -10,7 +11,7 @@ interface Task {
   status: string
   priority: string
   pomodoroEstimate: number
-  tags: string[]
+  tags: string
   dueDate: string | null
   completedAt: string | null
   createdAt: string
@@ -23,26 +24,16 @@ interface TaskListProps {
 }
 
 export default function TaskList({ tasks, onTaskUpdated }: TaskListProps) {
-  const [filter, setFilter] = useState('ALL')
-  const [searchTerm, setSearchTerm] = useState('')
   const [expandedTask, setExpandedTask] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'ALL' | 'TODO' | 'COMPLETED'>('ALL')
 
-  const filteredTasks = tasks.filter(task => {
-    const matchesFilter = filter === 'ALL' || task.status === filter
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (task.notes && task.notes.toLowerCase().includes(searchTerm.toLowerCase()))
-    return matchesFilter && matchesSearch
-  })
-
-  const updateTaskStatus = async (taskId: string, status: string) => {
+  const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
     try {
+      const newStatus = currentStatus === 'TODO' ? 'COMPLETED' : 'TODO'
       const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status,
-          completedAt: status === 'DONE' ? new Date().toISOString() : null
-        })
+        body: JSON.stringify({ status: newStatus })
       })
 
       if (response.ok) {
@@ -55,7 +46,7 @@ export default function TaskList({ tasks, onTaskUpdated }: TaskListProps) {
 
   const deleteTask = async (taskId: string) => {
     if (!confirm('Are you sure you want to delete this task?')) return
-
+    
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'DELETE'
@@ -69,6 +60,11 @@ export default function TaskList({ tasks, onTaskUpdated }: TaskListProps) {
     }
   }
 
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'ALL') return true
+    return task.status === filter
+  })
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'HIGH': return 'text-red-600 bg-red-50'
@@ -78,161 +74,190 @@ export default function TaskList({ tasks, onTaskUpdated }: TaskListProps) {
     }
   }
 
-  const getStatusIcon = (status: string, taskId: string) => {
-    switch (status) {
-      case 'TODO':
-        return (
-          <button
-            onClick={() => updateTaskStatus(taskId, 'IN_PROGRESS')}
-            className="w-5 h-5 border-2 border-gray-400 rounded hover:border-blue-500 transition-colors"
-          />
-        )
-      case 'IN_PROGRESS':
-        return (
-          <button
-            onClick={() => updateTaskStatus(taskId, 'DONE')}
-            className="w-5 h-5 border-2 border-blue-500 rounded bg-blue-50 hover:bg-blue-100 transition-colors flex items-center justify-center"
-          >
-            <Clock className="w-3 h-3 text-blue-500" />
-          </button>
-        )
-      case 'DONE':
-        return (
-          <button
-            onClick={() => updateTaskStatus(taskId, 'TODO')}
-            className="w-5 h-5 border-2 border-green-500 rounded bg-green-500 hover:bg-green-600 transition-colors flex items-center justify-center"
-          >
-            <Check className="w-3 h-3 text-white" />
-          </button>
-        )
-      default:
-        return null
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return null
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+    })
+  }
+
+  const parseTags = (tagsString: string): string[] => {
+    try {
+      return JSON.parse(tagsString)
+    } catch {
+      return []
     }
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg">
+    <div className="bg-white rounded-lg shadow-md">
       {/* Header */}
       <div className="p-4 border-b">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          {/* Filter */}
-          <div>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">Tasks</h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setFilter('ALL')}
+              className={clsx(
+                'px-3 py-1 text-sm rounded-lg transition-colors',
+                filter === 'ALL' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}
             >
-              <option value="ALL">All Tasks</option>
-              <option value="TODO">To Do</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="DONE">Done</option>
-            </select>
+              All ({tasks.length})
+            </button>
+            <button
+              onClick={() => setFilter('TODO')}
+              className={clsx(
+                'px-3 py-1 text-sm rounded-lg transition-colors',
+                filter === 'TODO' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              Active ({tasks.filter(t => t.status === 'TODO').length})
+            </button>
+            <button
+              onClick={() => setFilter('COMPLETED')}
+              className={clsx(
+                'px-3 py-1 text-sm rounded-lg transition-colors',
+                filter === 'COMPLETED' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              Done ({tasks.filter(t => t.status === 'COMPLETED').length})
+            </button>
           </div>
         </div>
       </div>
 
       {/* Task List */}
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y">
         {filteredTasks.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            {searchTerm ? 'No tasks match your search.' : 'No tasks yet. Add one above!'}
+            {filter === 'ALL' ? 'No tasks yet. Add one above!' : `No ${filter.toLowerCase()} tasks.`}
           </div>
         ) : (
-          filteredTasks.map((task) => (
-            <div key={task.id} className="p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex items-start space-x-3">
-                {/* Status Icon */}
-                <div className="flex-shrink-0 mt-0.5">
-                  {getStatusIcon(task.status, task.id)}
-                </div>
+          filteredTasks.map((task) => {
+            const tags = parseTags(task.tags)
+            const isExpanded = expandedTask === task.id
+            const isCompleted = task.status === 'COMPLETED'
 
-                {/* Task Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className={`text-sm font-medium ${
-                        task.status === 'DONE' ? 'line-through text-gray-500' : 'text-gray-900'
-                      }`}>
-                        {task.title}
-                      </h3>
-                      
-                      {task.notes && (
-                        <p className="mt-1 text-sm text-gray-600">{task.notes}</p>
+            return (
+              <div key={task.id} className={clsx(
+                'transition-colors',
+                isCompleted ? 'bg-gray-50' : 'hover:bg-gray-50'
+              )}>
+                {/* Main Task Row */}
+                <div className="p-4">
+                  <div className="flex items-start space-x-3">
+                    <button
+                      onClick={() => toggleTaskStatus(task.id, task.status)}
+                      className="mt-0.5 flex-shrink-0"
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-gray-400 hover:text-blue-600" />
                       )}
-                      
-                      <div className="mt-2 flex items-center space-x-2">
-                        {/* Priority */}
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${getPriorityColor(task.priority)}`}>
-                          {task.priority.toLowerCase()}
-                        </span>
-                        
-                        {/* Pomodoro Estimate */}
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded">
-                          {task.pomodoroEstimate} 🍅
-                        </span>
-                        
-                        {/* Tags */}
-                        {task.tags.map((tag) => (
-                          <span key={tag} className="inline-flex px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded">
-                            #{tag}
-                          </span>
-                        ))}
-                        
-                        {/* Due Date */}
-                        {task.dueDate && (
-                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 bg-orange-100 rounded">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            {new Date(task.dueDate).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    </button>
 
-                    {/* Actions */}
-                    <div className="flex-shrink-0 ml-4">
-                      <div className="relative">
-                        <button
-                          onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        
-                        {expandedTask === task.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10">
-                            <div className="py-1">
-                              <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <Edit3 className="w-4 h-4 mr-2" />
-                                Edit Task
-                              </button>
-                              <button
-                                onClick={() => deleteTask(task.id)}
-                                className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-gray-100"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Task
-                              </button>
-                            </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className={clsx(
+                            'text-base font-medium',
+                            isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
+                          )}>
+                            {task.title}
+                          </h3>
+                          
+                          {/* Meta info */}
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                            <span className={clsx(
+                              'inline-flex items-center px-2 py-0.5 rounded',
+                              getPriorityColor(task.priority)
+                            )}>
+                              <Flag className="w-3 h-3 mr-1" />
+                              {task.priority.toLowerCase()}
+                            </span>
+                            
+                            <span className="inline-flex items-center text-gray-600">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {task.pomodoroEstimate} 🍅
+                            </span>
+
+                            {tags.length > 0 && (
+                              <div className="inline-flex items-center space-x-1">
+                                <Hash className="w-3 h-3 text-gray-400" />
+                                {tags.map(tag => (
+                                  <span key={tag} className="text-blue-600">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {task.completedAt && (
+                              <span className="text-green-600">
+                                ✓ {formatDate(task.completedAt)}
+                              </span>
+                            )}
                           </div>
-                        )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={() => setExpandedTask(isExpanded ? null : task.id)}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => deleteTask(task.id)}
+                            className="p-1 text-gray-400 hover:text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 pl-12">
+                    <div className="text-sm text-gray-600 space-y-2">
+                      {task.notes && (
+                        <div>
+                          <span className="font-medium">Notes:</span> {task.notes}
+                        </div>
+                      )}
+                      {task.dueDate && (
+                        <div>
+                          <span className="font-medium">Due:</span> {formatDate(task.dueDate)}
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-medium">Created:</span> {formatDate(task.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>

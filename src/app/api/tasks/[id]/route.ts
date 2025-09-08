@@ -3,21 +3,20 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-type Context = {
-  params: Promise<{ id: string }>
-}
-
-export async function GET(
+export async function PATCH(
   request: NextRequest,
-  context: Context
+  { params }: { params: { id: string } }
 ) {
   try {
-    const params = await context.params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const body = await request.json()
+    const { status } = body
+
+    // Verify task ownership
     const task = await prisma.task.findFirst({
       where: {
         id: params.id,
@@ -29,54 +28,13 @@ export async function GET(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ task })
-  } catch (error) {
-    console.error('Error fetching task:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-
-export async function PUT(
-  request: NextRequest,
-  context: Context
-) {
-  try {
-    const params = await context.params
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const updateData: Record<string, unknown> = {}
-    
-    if (body.title !== undefined) updateData.title = body.title
-    if (body.notes !== undefined) updateData.notes = body.notes
-    if (body.status !== undefined) updateData.status = body.status
-    if (body.priority !== undefined) updateData.priority = body.priority
-    if (body.pomodoroEstimate !== undefined) updateData.pomodoroEstimate = body.pomodoroEstimate
-    if (body.tags !== undefined) updateData.tags = body.tags
-    if (body.dueDate !== undefined) {
-      updateData.dueDate = body.dueDate ? new Date(body.dueDate) : null
-    }
-    if (body.completedAt !== undefined) {
-      updateData.completedAt = body.completedAt ? new Date(body.completedAt) : null
-    }
-
-    const task = await prisma.task.updateMany({
-      where: {
-        id: params.id,
-        userId: session.user.id
-      },
-      data: updateData
-    })
-
-    if (task.count === 0) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
-    }
-
-    const updatedTask = await prisma.task.findUnique({
-      where: { id: params.id }
+    // Update task
+    const updatedTask = await prisma.task.update({
+      where: { id: params.id },
+      data: {
+        status,
+        completedAt: status === 'COMPLETED' ? new Date() : null
+      }
     })
 
     return NextResponse.json({ task: updatedTask })
@@ -88,27 +46,32 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: Context
+  { params }: { params: { id: string } }
 ) {
   try {
-    const params = await context.params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const task = await prisma.task.deleteMany({
+    // Verify task ownership
+    const task = await prisma.task.findFirst({
       where: {
         id: params.id,
         userId: session.user.id
       }
     })
 
-    if (task.count === 0) {
+    if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ message: 'Task deleted successfully' })
+    // Delete task
+    await prisma.task.delete({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting task:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

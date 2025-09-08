@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
     
     const estimateMatch = taskText.match(/~(\d+)/)
-    const estimate = estimateMatch ? parseInt(estimateMatch[1]) : 1
+    const pomodoroEstimate = estimateMatch ? parseInt(estimateMatch[1]) : 1
     
     // Clean title by removing syntax
     const title = taskText
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         title,
         priority,
-        estimate,
+        pomodoroEstimate,
         tags: JSON.stringify(tags),
         status: 'TODO'
       }
