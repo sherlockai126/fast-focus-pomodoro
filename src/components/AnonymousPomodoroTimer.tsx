@@ -326,7 +326,7 @@ export default function AnonymousPomodoroTimer() {
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Today's Progress</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Today&apos;s Progress</h3>
               <p className="text-gray-600">Keep up the great work!</p>
             </div>
             <TrendingUp className="w-8 h-8 text-green-600" />
@@ -364,7 +364,7 @@ export default function AnonymousPomodoroTimer() {
                   onClick={() => signIn('google', { callbackUrl: '/dashboard?sync=true' })}
                   className="px-6 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
                 >
-                  Sign in & Save Progress
+                  Sign in &amp; Save Progress
                 </button>
               </div>
               <button

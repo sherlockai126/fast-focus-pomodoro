@@ -113,7 +113,7 @@ export default function SessionMigration() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <h3 className="font-semibold text-red-900">Sync failed</h3>
           <p className="text-sm text-red-700">
-            We couldn't sync your sessions. They're still saved locally and we'll try again later.
+            We couldn&apos;t sync your sessions. They&apos;re still saved locally and we&apos;ll try again later.
           </p>
         </div>
       )}
