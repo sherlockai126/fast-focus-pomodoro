@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { Settings, LogOut } from 'lucide-react'
 import Image from 'next/image'
@@ -8,6 +8,7 @@ import TaskList from './TaskList'
 import PomodoroTimer from './PomodoroTimer'
 import AddTaskForm from './AddTaskForm'
 import SettingsModal from './SettingsModal'
+import SessionMigration from './SessionMigration'
 
 interface Task {
   id: string
@@ -125,6 +126,11 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Session Migration Banner */}
+        <Suspense fallback={null}>
+          <SessionMigration />
+        </Suspense>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Tasks */}
           <div className="lg:col-span-2 space-y-6">
