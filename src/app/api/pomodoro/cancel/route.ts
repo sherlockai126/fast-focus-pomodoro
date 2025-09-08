@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { WebhookDispatcher } from '@/lib/webhook'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,87 +13,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { sessionId, actualSeconds } = body
 
-    // Find the running session
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Session ID required' }, { status: 400 })
+    }
+
+    // Find and update the session
     const pomodoroSession = await prisma.pomodoroSession.findFirst({
       where: {
         id: sessionId,
         userId: session.user.id,
         status: 'RUNNING'
-      },
-      include: {
-        task: {
-          select: {
-            id: true,
-            title: true
-          }
-        }
       }
     })
 
     if (!pomodoroSession) {
-      return NextResponse.json({ error: 'Session not found or not running' }, { status: 404 })
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id }
-    })
-
-    const settings = await prisma.settings.findUnique({
-      where: { userId: session.user.id }
-    })
-
-    // Calculate planned duration
-    let plannedMinutes = 25
-    if (pomodoroSession.type === 'SHORT_BREAK') {
-      plannedMinutes = settings?.shortBreak || 5
-    } else if (pomodoroSession.type === 'LONG_BREAK') {
-      plannedMinutes = settings?.longBreak || 15
-    } else {
-      plannedMinutes = settings?.pomodoroLen || 25
-    }
-
-    // Update session
-    const cancelledSession = await prisma.pomodoroSession.update({
+    // Update session status
+    const updatedSession = await prisma.pomodoroSession.update({
       where: { id: sessionId },
       data: {
         status: 'CANCELED',
-        endAt: new Date(),
-        actualSec: actualSeconds
-      },
-      include: {
-        task: {
-          select: {
-            id: true,
-            title: true
-          }
-        }
+        completedAt: new Date(),
+        actualSeconds: actualSeconds || 0
       }
     })
 
-    // Dispatch webhook for cancellation
-    const payload = {
-      event: 'pomodoro.canceled',
-      user_id: session.user.id,
-      session_id: sessionId,
-      task: pomodoroSession.task ? {
-        id: pomodoroSession.task.id,
-        title: pomodoroSession.task.title
-      } : undefined,
-      start_at: pomodoroSession.startAt.toISOString(),
-      end_at: cancelledSession.endAt!.toISOString(),
-      duration_planned_sec: plannedMinutes * 60,
-      duration_actual_sec: actualSeconds,
-      timezone: user?.timezone || 'UTC',
-      app_version: process.env.APP_VERSION || '1.0.0'
-    }
-
-    // Fire webhook asynchronously
-    WebhookDispatcher.dispatch(payload, session.user.id, sessionId)
-      .catch(error => console.error('Webhook dispatch error:', error))
-
-    return NextResponse.json({ 
-      session: cancelledSession
-    })
+    return NextResponse.json({ session: updatedSession })
   } catch (error) {
     console.error('Error canceling pomodoro:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -79,31 +79,32 @@ model Settings {
 }
 
 model Task {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String
-  notes     String?
-  priority  Priority @default(MEDIUM)
-  tags      String   @default("") // JSON string array
-  estimate  Int      @default(1)  // estimated pomodoros
-  status    TaskStatus @default(TODO)
-  dueAt     DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  userId           String
+  title            String
+  notes            String?
+  priority         Priority @default(MEDIUM)
+  tags             String   @default("") // JSON string array
+  pomodoroEstimate Int      @default(1)  // estimated pomodoros
+  status           TaskStatus @default(TODO)
+  dueDate          DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
   
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   pomodoroSessions PomodoroSession[]
 }
 
 model PomodoroSession {
-  id        String   @id @default(cuid())
-  userId    String
-  taskId    String?
-  startAt   DateTime
-  endAt     DateTime?
-  status    SessionStatus @default(RUNNING)
-  actualSec Int?
-  type      SessionType   @default(POMODORO)
+  id            String   @id @default(cuid())
+  userId        String
+  taskId        String?
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  status        SessionStatus @default(RUNNING)
+  actualSeconds Int?
+  type          SessionType   @default(POMODORO)
   
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   task              Task?             @relation(fields: [taskId], references: [id], onDelete: SetNull)
@@ -135,6 +136,7 @@ enum Priority {
 enum TaskStatus {
   TODO
   DONE
+  COMPLETED
 }
 
 enum SessionStatus {

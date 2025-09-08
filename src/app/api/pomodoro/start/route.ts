@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         taskId: taskId || null,
-        startAt: new Date(),
+        startedAt: new Date(),
         status: 'RUNNING',
         type: type
       },
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         id: pomodoroSession.task.id,
         title: pomodoroSession.task.title
       } : undefined,
-      start_at: pomodoroSession.startAt.toISOString(),
+      start_at: pomodoroSession.startedAt.toISOString(),
       duration_planned_sec: durationMinutes * 60,
       timezone: user?.timezone || 'UTC',
       app_version: process.env.APP_VERSION || '1.0.0'

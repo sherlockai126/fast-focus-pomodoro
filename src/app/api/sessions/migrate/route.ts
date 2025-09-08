@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     for (const localSession of sessions) {
       try {
         // Create task if it has a title
-        let taskId = null
+        let taskId: string | null = null
         if (localSession.taskTitle && localSession.type === 'POMODORO') {
           const task = await prisma.task.create({
             data: {
