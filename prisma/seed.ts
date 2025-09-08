@@ -45,36 +45,37 @@ async function main() {
       notes: 'Define requirements, scope, and technical approach',
       priority: 'HIGH' as const,
       tags: JSON.stringify(['documentation', 'planning']),
-      estimate: 3,
+      pomodoroEstimate: 3,
     },
     {
       title: 'Review pull requests',
       notes: 'Check team PRs and provide feedback',
       priority: 'MEDIUM' as const,
       tags: JSON.stringify(['code-review', 'teamwork']),
-      estimate: 2,
-      status: 'DONE' as const,
+      pomodoroEstimate: 2,
+      status: 'COMPLETED' as const,
+      completedAt: new Date(),
     },
     {
       title: 'Update user dashboard',
       notes: 'Add new analytics widgets',
       priority: 'MEDIUM' as const,
       tags: JSON.stringify(['frontend', 'ui']),
-      estimate: 4,
+      pomodoroEstimate: 4,
     },
     {
       title: 'Deploy to staging',
       notes: 'Deploy latest changes to staging environment',
       priority: 'LOW' as const,
       tags: JSON.stringify(['devops', 'deployment']),
-      estimate: 1,
+      pomodoroEstimate: 1,
     },
     {
       title: 'Research competitor features',
       notes: 'Analyze competitor offerings for Q2 roadmap',
       priority: 'LOW' as const,
       tags: JSON.stringify(['research', 'strategy']),
-      estimate: 2,
+      pomodoroEstimate: 2,
     },
   ]
 
@@ -92,21 +93,21 @@ async function main() {
   const completedTask = await prisma.task.findFirst({
     where: {
       userId: demoUser.id,
-      status: 'DONE',
+      status: 'COMPLETED',
     },
   })
 
   if (completedTask) {
     const sessions = [
       {
-        startAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
-        endAt: new Date(Date.now() - 2.5 * 60 * 60 * 1000), // 2.5 hours ago
-        actualSec: 1500, // 25 minutes
+        startedAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
+        completedAt: new Date(Date.now() - 2.5 * 60 * 60 * 1000), // 2.5 hours ago
+        actualSeconds: 1500, // 25 minutes
       },
       {
-        startAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-        endAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000), // 1.5 hours ago
-        actualSec: 1500, // 25 minutes
+        startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        completedAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000), // 1.5 hours ago
+        actualSeconds: 1500, // 25 minutes
       },
     ]
 
@@ -137,10 +138,10 @@ async function main() {
               id: completedTask.id,
               title: completedTask.title,
             },
-            start_at: session.startAt.toISOString(),
-            end_at: session.endAt!.toISOString(),
+            start_at: session.startedAt.toISOString(),
+            end_at: session.completedAt!.toISOString(),
             duration_planned_sec: 1500,
-            duration_actual_sec: session.actualSec,
+            duration_actual_sec: session.actualSeconds,
             timezone: demoUser.timezone,
             app_version: '1.0.0',
           }),
