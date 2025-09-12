@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest) {
       notificationEnabled
     } = body
 
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     if (pomodoroLen !== undefined) updateData.pomodoroLen = pomodoroLen
     if (shortBreak !== undefined) updateData.shortBreak = shortBreak
     if (longBreak !== undefined) updateData.longBreak = longBreak

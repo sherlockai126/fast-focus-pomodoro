@@ -1,0 +1,608 @@
+openapi: 3.0.3
+info:
+  title: Fast Focus Chat API
+  description: Real-time chat functionality for Fast Focus Pomodoro application
+  version: 0.2.0
+  contact:
+    name: Fast Focus Development Team
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://your-domain.com/api
+    description: Production server
+
+paths:
+  /chat/conversations:
+    get:
+      summary: Get user's conversations
+      description: Retrieve all conversations for the authenticated user
+      tags: [Conversations]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Number of conversations to return (default: 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of conversations to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConversationSummary'
+                  total:
+                    type: integer
+                    description: Total number of conversations
+                  hasMore:
+                    type: boolean
+                    description: Whether more conversations exist
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Create new conversation
+      description: Start a new conversation with another user
+      tags: [Conversations]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipientId]
+              properties:
+                recipientId:
+                  type: string
+                  description: ID of user to start conversation with
+                initialMessage:
+                  type: string
+                  description: Optional first message to send
+                  maxLength: 5000
+      responses:
+        '201':
+          description: Conversation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conversation already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Conversation already exists"
+                  existingConversationId:
+                    type: string
+
+  /chat/conversations/{conversationId}:
+    get:
+      summary: Get conversation details
+      description: Retrieve detailed information about a specific conversation
+      tags: [Conversations]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /chat/conversations/{conversationId}/messages:
+    get:
+      summary: Get conversation messages
+      description: Retrieve messages from a conversation with pagination
+      tags: [Messages]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Number of messages to return (default: 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: before
+          in: query
+          description: Message ID to paginate before (for loading older messages)
+          schema:
+            type: string
+        - name: after
+          in: query
+          description: Message ID to paginate after (for loading newer messages)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  hasMore:
+                    type: boolean
+                    description: Whether more messages exist in requested direction
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    post:
+      summary: Send message
+      description: Send a new message to the conversation
+      tags: [Messages]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: Message content
+                  minLength: 1
+                  maxLength: 5000
+                type:
+                  type: string
+                  enum: [TEXT, SYSTEM]
+                  default: TEXT
+      responses:
+        '201':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Rate limit exceeded. Maximum 10 messages per minute."
+
+  /chat/conversations/{conversationId}/typing:
+    post:
+      summary: Send typing indicator
+      description: Notify other participants that user is typing
+      tags: [Typing]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isTyping]
+              properties:
+                isTyping:
+                  type: boolean
+                  description: Whether user is currently typing
+      responses:
+        '200':
+          description: Typing status updated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /chat/messages/{messageId}:
+    patch:
+      summary: Update message
+      description: Edit or delete a message (user can only modify their own messages)
+      tags: [Messages]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: New message content (for editing)
+                  maxLength: 5000
+                isDeleted:
+                  type: boolean
+                  description: Set to true to delete message
+      responses:
+        '200':
+          description: Message updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /chat/messages/{messageId}/read:
+    post:
+      summary: Mark message as read
+      description: Update the read status of a message for the authenticated user
+      tags: [Messages]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message marked as read
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /chat/users/search:
+    get:
+      summary: Search users
+      description: Search for users to start conversations with
+      tags: [Users]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query (name or email)
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          description: Number of users to return (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: List of matching users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /chat/users/online:
+    get:
+      summary: Get online users
+      description: Get list of currently online users
+      tags: [Users]
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: List of online users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: NextAuth.js session cookie
+
+  schemas:
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [DIRECT, GROUP]
+        name:
+          type: string
+          nullable: true
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+        lastMessage:
+          allOf:
+            - $ref: '#/components/schemas/Message'
+            - type: object
+              nullable: true
+        unreadCount:
+          type: integer
+          minimum: 0
+        lastMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [DIRECT, GROUP]
+        name:
+          type: string
+          nullable: true
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationParticipant'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ConversationParticipant:
+      type: object
+      properties:
+        id:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        joinedAt:
+          type: string
+          format: date-time
+        lastReadAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        conversationId:
+          type: string
+        sender:
+          allOf:
+            - $ref: '#/components/schemas/UserProfile'
+            - type: object
+              nullable: true
+        type:
+          type: string
+          enum: [TEXT, SYSTEM]
+        status:
+          type: string
+          enum: [SENT, DELIVERED, READ]
+        isDeleted:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+        image:
+          type: string
+          nullable: true
+        isOnline:
+          type: boolean
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        chatStatus:
+          type: string
+          enum: [AVAILABLE, BUSY, AWAY]
+
+    TypingEvent:
+      type: object
+      properties:
+        userId:
+          type: string
+        conversationId:
+          type: string
+        isTyping:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: object
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Authentication required"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Access denied"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Resource not found"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get('filter') // all, today, completed
     const search = searchParams.get('search')
     
-    let whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       userId: session.user.id
     }
 

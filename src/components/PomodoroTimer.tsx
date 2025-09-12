@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Play, Pause, Square, RotateCcw } from 'lucide-react'
+import { Play, Pause, Square } from 'lucide-react'
 
 interface Task {
   id: string
@@ -29,8 +29,63 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
   const [sessionType, setSessionType] = useState<'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK'>('POMODORO')
   const [completedPomodoros, setCompletedPomodoros] = useState(0)
   
-  const intervalRef = useRef<NodeJS.Timeout>()
+  const intervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const startTimeRef = useRef<number>(0)
+
+  const resetTimer = () => {
+    setCurrentSession(null)
+    setIsRunning(false)
+    startTimeRef.current = 0
+    onSessionChange(null)
+  }
+
+  const handleTimerComplete = async () => {
+    if (!currentSession) return
+
+    try {
+      const actualSeconds = getDurationForType(sessionType)
+      
+      await fetch('/api/pomodoro/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: currentSession.id,
+          actualSeconds
+        })
+      })
+
+      // Show notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const taskTitle = selectedTaskId 
+          ? tasks.find(t => t.id === selectedTaskId)?.title 
+          : 'Focus session'
+        
+        new Notification('Timer Complete!', {
+          body: sessionType === 'POMODORO' 
+            ? `Completed ${taskTitle || 'pomodoro session'}`
+            : 'Break time finished',
+          icon: '/favicon.ico'
+        })
+      }
+
+      if (sessionType === 'POMODORO') {
+        setCompletedPomodoros(prev => prev + 1)
+        // Show break options
+        const shouldTakeLongBreak = (completedPomodoros + 1) % 4 === 0
+        setSessionType(shouldTakeLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK')
+        setTimeLeft(getDurationForType(shouldTakeLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK'))
+      } else {
+        // Break finished, back to pomodoro
+        setSessionType('POMODORO')
+        setTimeLeft(getDurationForType('POMODORO'))
+      }
+
+      resetTimer()
+      onTaskUpdated()
+    } catch (error) {
+      console.error('Error completing timer:', error)
+    }
+  }
 
   // Timer effect
   useEffect(() => {
@@ -55,7 +110,7 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
         clearInterval(intervalRef.current)
       }
     }
-  }, [isRunning, timeLeft])
+  }, [isRunning, timeLeft, handleTimerComplete])
 
   const getDurationForType = (type: 'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK') => {
     switch (type) {
@@ -123,60 +178,6 @@ export default function PomodoroTimer({ tasks, onSessionChange, onTaskUpdated }:
     }
   }
 
-  const handleTimerComplete = async () => {
-    if (!currentSession) return
-
-    try {
-      const actualSeconds = getDurationForType(sessionType)
-      
-      await fetch('/api/pomodoro/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: currentSession.id,
-          actualSeconds
-        })
-      })
-
-      // Show notification
-      if ('Notification' in window && Notification.permission === 'granted') {
-        const taskTitle = selectedTaskId 
-          ? tasks.find(t => t.id === selectedTaskId)?.title 
-          : 'Focus session'
-        
-        new Notification('Timer Complete!', {
-          body: sessionType === 'POMODORO' 
-            ? `Completed ${taskTitle || 'pomodoro session'}`
-            : 'Break time finished',
-          icon: '/favicon.ico'
-        })
-      }
-
-      if (sessionType === 'POMODORO') {
-        setCompletedPomodoros(prev => prev + 1)
-        // Show break options
-        const shouldTakeLongBreak = (completedPomodoros + 1) % 4 === 0
-        setSessionType(shouldTakeLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK')
-        setTimeLeft(getDurationForType(shouldTakeLongBreak ? 'LONG_BREAK' : 'SHORT_BREAK'))
-      } else {
-        // Break finished, back to pomodoro
-        setSessionType('POMODORO')
-        setTimeLeft(getDurationForType('POMODORO'))
-      }
-
-      resetTimer()
-      onTaskUpdated()
-    } catch (error) {
-      console.error('Error completing timer:', error)
-    }
-  }
-
-  const resetTimer = () => {
-    setCurrentSession(null)
-    setIsRunning(false)
-    startTimeRef.current = 0
-    onSessionChange(null)
-  }
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)

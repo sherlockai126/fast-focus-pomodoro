@@ -1,0 +1,532 @@
+# WebSocket Events Specification
+# Real-time Chat Application - Fast Focus Pomodoro
+
+version: 1.0.0
+description: WebSocket event contracts for real-time chat functionality
+
+connection:
+  url: ws://localhost:3000/socket.io
+  authentication: 
+    type: session
+    description: Uses NextAuth.js session cookie for authentication
+  namespace: /chat
+
+# Client → Server Events
+
+client_events:
+  
+  join_conversation:
+    description: Join a conversation room for real-time updates
+    payload:
+      type: object
+      required: [conversationId]
+      properties:
+        conversationId:
+          type: string
+          description: ID of conversation to join
+      example:
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+    
+  leave_conversation:
+    description: Leave a conversation room
+    payload:
+      type: object
+      required: [conversationId]
+      properties:
+        conversationId:
+          type: string
+          description: ID of conversation to leave
+      example:
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+  
+  typing_start:
+    description: Notify that user started typing in a conversation
+    payload:
+      type: object
+      required: [conversationId]
+      properties:
+        conversationId:
+          type: string
+          description: ID of conversation where user is typing
+      example:
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+    rate_limit: "5 per second per conversation"
+  
+  typing_stop:
+    description: Notify that user stopped typing in a conversation
+    payload:
+      type: object
+      required: [conversationId]
+      properties:
+        conversationId:
+          type: string
+          description: ID of conversation where user stopped typing
+      example:
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+  
+  message_read:
+    description: Mark message as read by current user
+    payload:
+      type: object
+      required: [messageId, conversationId]
+      properties:
+        messageId:
+          type: string
+          description: ID of message being marked as read
+        conversationId:
+          type: string
+          description: ID of conversation containing the message
+      example:
+        messageId: "clm1x2y3z4a5b6c7d8e9f1"
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+
+  get_online_users:
+    description: Request list of currently online users
+    payload: null
+    response_event: online_users_list
+
+# Server → Client Events
+
+server_events:
+  
+  message_received:
+    description: New message received in a conversation
+    payload:
+      type: object
+      required: [message, conversationId]
+      properties:
+        message:
+          $ref: '#/schemas/Message'
+        conversationId:
+          type: string
+          description: ID of conversation containing the message
+      example:
+        message:
+          id: "clm1x2y3z4a5b6c7d8e9f1"
+          content: "Hello there!"
+          conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+          sender:
+            id: "user123"
+            name: "John Doe"
+            isOnline: true
+          type: "TEXT"
+          status: "SENT"
+          createdAt: "2025-09-11T15:30:00.000Z"
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+    rooms: ["conversation:{conversationId}"]
+  
+  message_updated:
+    description: Message was edited or deleted
+    payload:
+      type: object
+      required: [message, conversationId]
+      properties:
+        message:
+          $ref: '#/schemas/Message'
+        conversationId:
+          type: string
+          description: ID of conversation containing the message
+      example:
+        message:
+          id: "clm1x2y3z4a5b6c7d8e9f1"
+          content: "Hello there! (edited)"
+          isDeleted: false
+          editedAt: "2025-09-11T15:35:00.000Z"
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+    rooms: ["conversation:{conversationId}"]
+  
+  message_status_changed:
+    description: Message delivery/read status changed
+    payload:
+      type: object
+      required: [messageId, status, conversationId]
+      properties:
+        messageId:
+          type: string
+          description: ID of message with status change
+        status:
+          type: string
+          enum: [SENT, DELIVERED, READ]
+          description: New status of the message
+        conversationId:
+          type: string
+          description: ID of conversation containing the message
+        readBy:
+          type: object
+          description: User who read the message (only for READ status)
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+      example:
+        messageId: "clm1x2y3z4a5b6c7d8e9f1"
+        status: "READ"
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+        readBy:
+          id: "user456"
+          name: "Jane Smith"
+    rooms: ["conversation:{conversationId}"]
+  
+  typing_indicator:
+    description: User typing status changed in conversation
+    payload:
+      type: object
+      required: [userId, conversationId, isTyping]
+      properties:
+        userId:
+          type: string
+          description: ID of user whose typing status changed
+        userName:
+          type: string
+          description: Name of user for display purposes
+        conversationId:
+          type: string
+          description: ID of conversation where typing is happening
+        isTyping:
+          type: boolean
+          description: Whether user is currently typing
+        timestamp:
+          type: string
+          format: date-time
+          description: When the typing status changed
+      example:
+        userId: "user123"
+        userName: "John Doe"
+        conversationId: "clm1x2y3z4a5b6c7d8e9f0"
+        isTyping: true
+        timestamp: "2025-09-11T15:30:00.000Z"
+    rooms: ["conversation:{conversationId}"]
+    expires: "30 seconds"
+  
+  user_online_status:
+    description: User's online status changed
+    payload:
+      type: object
+      required: [userId, isOnline]
+      properties:
+        userId:
+          type: string
+          description: ID of user whose status changed
+        userName:
+          type: string
+          description: Name of user for display purposes
+        isOnline:
+          type: boolean
+          description: Whether user is now online
+        chatStatus:
+          type: string
+          enum: [AVAILABLE, BUSY, AWAY]
+          description: User's current chat availability status
+        lastSeenAt:
+          type: string
+          format: date-time
+          description: When user was last active (if going offline)
+      example:
+        userId: "user123"
+        userName: "John Doe"
+        isOnline: true
+        chatStatus: "AVAILABLE"
+    rooms: ["user:{userId}_contacts"] # Sent to users who have conversations with this user
+  
+  conversation_created:
+    description: New conversation was created involving the user
+    payload:
+      type: object
+      required: [conversation]
+      properties:
+        conversation:
+          $ref: '#/schemas/ConversationSummary'
+      example:
+        conversation:
+          id: "clm1x2y3z4a5b6c7d8e9f0"
+          type: "DIRECT"
+          participants:
+            - id: "user123"
+              name: "John Doe"
+              isOnline: true
+            - id: "user456"
+              name: "Jane Smith"  
+              isOnline: false
+          createdAt: "2025-09-11T15:30:00.000Z"
+    rooms: ["user:{userId}"] # Sent to all participants
+  
+  conversation_updated:
+    description: Conversation information was updated (name, participants, etc.)
+    payload:
+      type: object
+      required: [conversation]
+      properties:
+        conversation:
+          $ref: '#/schemas/ConversationSummary'
+        changes:
+          type: array
+          items:
+            type: string
+          description: List of fields that were changed
+      example:
+        conversation:
+          id: "clm1x2y3z4a5b6c7d8e9f0"
+          name: "Project Discussion"
+        changes: ["name"]
+    rooms: ["conversation:{conversationId}"]
+  
+  online_users_list:
+    description: Response to get_online_users request
+    payload:
+      type: object
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/schemas/UserProfile'
+        timestamp:
+          type: string
+          format: date-time
+          description: When the list was generated
+      example:
+        users:
+          - id: "user123"
+            name: "John Doe"
+            isOnline: true
+            chatStatus: "AVAILABLE"
+          - id: "user456"
+            name: "Jane Smith"
+            isOnline: true
+            chatStatus: "BUSY"
+        timestamp: "2025-09-11T15:30:00.000Z"
+
+# Error Events
+
+error_events:
+  
+  authentication_error:
+    description: User authentication failed
+    payload:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Authentication required"
+        code:
+          type: string
+          example: "AUTH_REQUIRED"
+  
+  authorization_error:
+    description: User not authorized for requested action
+    payload:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Not authorized to join this conversation"
+        code:
+          type: string
+          example: "ACCESS_DENIED"
+        details:
+          type: object
+          properties:
+            conversationId:
+              type: string
+            action:
+              type: string
+  
+  rate_limit_error:
+    description: User exceeded rate limits
+    payload:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Rate limit exceeded for typing events"
+        code:
+          type: string
+          example: "RATE_LIMIT"
+        retryAfter:
+          type: integer
+          description: Seconds until user can retry
+  
+  validation_error:
+    description: Invalid event payload
+    payload:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid payload"
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+# Connection Events
+
+connection_events:
+  
+  connect:
+    description: Client successfully connected
+    payload:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: ID of authenticated user
+        sessionId:
+          type: string
+          description: Unique session identifier
+  
+  disconnect:
+    description: Client disconnected
+    payload:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Reason for disconnection
+        timestamp:
+          type: string
+          format: date-time
+
+# Shared Schemas
+
+schemas:
+  Message:
+    type: object
+    properties:
+      id:
+        type: string
+      content:
+        type: string
+      conversationId:
+        type: string
+      sender:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          isOnline:
+            type: boolean
+        nullable: true
+      type:
+        type: string
+        enum: [TEXT, SYSTEM]
+      status:
+        type: string
+        enum: [SENT, DELIVERED, READ]
+      isDeleted:
+        type: boolean
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      editedAt:
+        type: string
+        format: date-time
+        nullable: true
+
+  ConversationSummary:
+    type: object
+    properties:
+      id:
+        type: string
+      type:
+        type: string
+        enum: [DIRECT, GROUP]
+      name:
+        type: string
+        nullable: true
+      participants:
+        type: array
+        items:
+          $ref: '#/schemas/UserProfile'
+      lastMessage:
+        $ref: '#/schemas/Message'
+        nullable: true
+      unreadCount:
+        type: integer
+        minimum: 0
+      lastMessageAt:
+        type: string
+        format: date-time
+        nullable: true
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+
+  UserProfile:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+        nullable: true
+      email:
+        type: string
+      image:
+        type: string
+        nullable: true
+      isOnline:
+        type: boolean
+      lastSeenAt:
+        type: string
+        format: date-time
+        nullable: true
+      chatStatus:
+        type: string
+        enum: [AVAILABLE, BUSY, AWAY]
+
+# Room Management
+
+rooms:
+  user_room:
+    pattern: "user:{userId}"
+    description: "Personal room for user-specific events (new conversations, etc.)"
+    
+  conversation_room:
+    pattern: "conversation:{conversationId}"
+    description: "Room for all participants in a specific conversation"
+    
+  contacts_room:
+    pattern: "user:{userId}_contacts"
+    description: "Room for users who have conversations with this user (for online status)"
+
+# Rate Limiting
+
+rate_limits:
+  typing_events: "5 per second per conversation"
+  message_read: "10 per second per user"
+  join_conversation: "20 per minute per user"
+  
+# Security Notes
+
+security:
+  authentication:
+    - "All WebSocket connections must be authenticated via NextAuth.js session"
+    - "Unauthenticated connections are immediately disconnected"
+    
+  authorization:
+    - "Users can only join conversation rooms they participate in"
+    - "All events are validated for user permissions"
+    - "Rate limiting prevents abuse"
+    
+  data_validation:
+    - "All event payloads validated against schemas"
+    - "Message content sanitized for XSS prevention"
+    - "Conversation access checked before event emission"

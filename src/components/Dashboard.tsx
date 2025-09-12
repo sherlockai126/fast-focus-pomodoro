@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { Plus, Play, Pause, Square, Settings, BarChart3, User, Timer, Clock } from 'lucide-react'
+import { Plus, Settings, BarChart3, Clock, MessageSquare } from 'lucide-react'
+import Image from 'next/image'
 import QuickAddTask from './QuickAddTask'
 import TaskList from './TaskList'
 import PomodoroTimer from './PomodoroTimer'
@@ -17,12 +18,18 @@ interface Task {
   pomodoroSessions: { id: string }[]
 }
 
+interface PomodoroSession {
+  id: string
+  type: 'POMODORO' | 'SHORT_BREAK' | 'LONG_BREAK'
+  status: 'RUNNING' | 'COMPLETED' | 'CANCELED'
+}
+
 export default function Dashboard() {
   const { data: session } = useSession()
   const [tasks, setTasks] = useState<Task[]>([])
   const [todayTasks, setTodayTasks] = useState<Task[]>([])
   const [showQuickAdd, setShowQuickAdd] = useState(false)
-  const [currentSession, setCurrentSession] = useState(null)
+  const [currentSession, setCurrentSession] = useState<PomodoroSession | null>(null)
   const [filter, setFilter] = useState<'today' | 'all' | 'completed'>('today')
 
   const fetchTasks = useCallback(async () => {
@@ -126,6 +133,13 @@ export default function Dashboard() {
               <button className="p-2 text-gray-400 hover:text-gray-600">
                 <BarChart3 className="w-5 h-5" />
               </button>
+              <button 
+                onClick={() => window.location.href = '/chat'}
+                className="p-2 text-gray-400 hover:text-gray-600"
+                title="Chat"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
               <button className="p-2 text-gray-400 hover:text-gray-600">
                 <Settings className="w-5 h-5" />
               </button>
@@ -134,9 +148,11 @@ export default function Dashboard() {
                   onClick={() => signOut()}
                   className="flex items-center space-x-2 p-2 text-gray-600 hover:text-gray-900"
                 >
-                  <img
+                  <Image
                     src={session?.user?.image || ''}
                     alt="User avatar"
+                    width={24}
+                    height={24}
                     className="w-6 h-6 rounded-full"
                   />
                   <span className="text-sm font-medium">{session?.user?.name}</span>
@@ -198,7 +214,6 @@ export default function Dashboard() {
               <TaskList 
                 tasks={displayTasks}
                 onTaskUpdated={onTaskUpdated}
-                currentSession={currentSession}
               />
             </div>
           </div>

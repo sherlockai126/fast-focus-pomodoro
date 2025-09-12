@@ -15,10 +15,9 @@ interface Task {
 interface TaskListProps {
   tasks: Task[]
   onTaskUpdated: () => void
-  currentSession: any
 }
 
-export default function TaskList({ tasks, onTaskUpdated, currentSession }: TaskListProps) {
+export default function TaskList({ tasks, onTaskUpdated }: TaskListProps) {
   const handleToggleStatus = async (taskId: string, currentStatus: 'TODO' | 'DONE') => {
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {

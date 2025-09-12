@@ -40,8 +40,8 @@ export const authOptions: NextAuthOptions = {
           })
         }
         
-        // Update user timezone if available
-        if (profile?.locale) {
+        // Update user timezone 
+        if (user.id) {
           const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
           await prisma.user.update({
             where: { id: user.id },
